@@ -1,8 +1,6 @@
-# Games With Go
+# Lyn's Rhythm Dungeon
 
-I am following Jack Mott's [Games With Go](https://www.youtube.com/watch?v=9D4yH7e_ea8) series as a reference, which teaches programming in Go through small game-related projects.
-
-![Current progress screenshot](https://i.imgur.com/HwTn8A1.png)
+What's in a name?
 
 ## Why Go?
 
