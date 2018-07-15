@@ -579,7 +579,7 @@ func (ui *ui) Run() {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch e := event.(type) {
 			case *sdl.QuitEvent:
-				// Instead of returning, put inputn into channel
+				// Instead of returning, put input into channel
 				ui.inputChan <- &game.Input{Typ: game.QuitGame}
 			case *sdl.WindowEvent:
 				if e.Event == sdl.WINDOWEVENT_CLOSE {
@@ -610,9 +610,11 @@ func (ui *ui) Run() {
 						ui.state = UIBattle
 					}
 				case game.Damage:
-					newLevel.ResolveDamage()
-					if ui.state == UIBattle {
-						ui.state = UIMain
+					if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
+						newLevel.ResolveDamage()
+						if ui.state == UIBattle {
+							ui.state = UIMain
+						}
 					}
 				default:
 				}
@@ -648,7 +650,12 @@ func (ui *ui) Run() {
 			ui.DrawInventory(newLevel)
 		} else if ui.state == UIBattle {
 			// Start battle
-			ui.DrawBattle(newLevel)
+			if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
+				ui.DrawBattle(newLevel)
+			} else {
+				// Clear opponent's battle UI
+				ui.state = UIMain
+			}
 		}
 		// TODO(max): calling present twice will cause flickering
 		ui.renderer.Present()

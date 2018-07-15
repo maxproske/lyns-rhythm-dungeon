@@ -16,7 +16,7 @@ func (ui *ui) DrawBurst(c *game.Character) {
 	offsetY := int32(ui.winHeight/2 - (game.NumKeys*24)/2)
 
 	// Play playfield
-	playfieldRect := sdl.Rect{offsetX, offsetY, game.NumKeys * 24, int32(len(c.Burst)+1) * 20}
+	playfieldRect := sdl.Rect{offsetX, offsetY, game.NumKeys * 24, int32(len(c.Burst.Notes)+1) * 20}
 	ui.renderer.Copy(ui.playfieldBackground, nil, &playfieldRect)
 
 	// Draw receptors
@@ -26,18 +26,17 @@ func (ui *ui) DrawBurst(c *game.Character) {
 		ui.renderer.Copy(ui.noteskinAtlas, &srcRect, &dstRect)
 	}
 
-	for noteIndex, columnIndex := range c.Burst {
+	for noteIndex, columnIndex := range c.Burst.Notes {
 		// Get note colour
-		noteskinIndex := 0
+		noteskinIndex := 0 // Uncoloured for monsters
 		if c.Name == "You" {
-			noteskinIndex = colors[noteIndex%game.NumKeys]
+			noteskinIndex = colors[(noteIndex+c.Burst.Combo)%game.NumKeys] // Coloured for player
 		}
 		noteskinRune := getRuneFromNoteskinIndex(noteskinIndex)
 		srcRect := ui.noteskinIndex[noteskinRune][0]
 		dstRect := sdl.Rect{int32(columnIndex*24) + offsetX, int32((noteIndex+1)*20) + offsetY, 24, 20}
 		ui.renderer.Copy(ui.noteskinAtlas, &srcRect, &dstRect)
 	}
-	//TODO(Max): Append and take away from the slice using Go magic when a note is hit
 }
 
 func getRuneFromNoteskinIndex(i int) rune {
@@ -60,8 +59,7 @@ func (ui *ui) DrawBattle(level *game.Level) {
 	invRect := ui.getBattleRect()
 	ui.renderer.Copy(ui.battleBackground, nil, invRect)
 
-	// Draw the player's burst first
-	// fmt.Println(level.Battle)
+	// Draw the attacker's burst first
 	ui.DrawBurst(level.Battle.C1)
 }
 

@@ -65,6 +65,8 @@ const (
 	EquipItem
 	// Search input type
 	Search
+	// MonsterAttacked is not a player input type
+	MonsterAttacked
 )
 
 // Battle tracks the position of two characters
@@ -142,7 +144,14 @@ type Character struct {
 	Helmet       *Item
 	Weapon       *Item
 	PatternRNG   *rand.Rand // Each character has rand value seperate from ui
-	Burst        []int
+	Burst        *Burst
+}
+
+// Burst tracks note length to preserve colour order
+type Burst struct {
+	Notes    []int
+	MaxCombo int
+	Combo    int
 }
 
 // GameEvent provides visibility of events to UI2D
@@ -214,9 +223,12 @@ func (level *Level) Attack(c1, c2 *Character) {
 	level.LastEvent = Attack
 	// Attach new stream pattern to attacking character
 	streamLength := 4
-	c1.Burst = c1.MakeStream(streamLength)
-	level.AddEvent(c1.Name + " Attacked " + c2.Name)
-
+	c1.Burst = &Burst{c1.MakeStream(streamLength), streamLength, 0}
+	if c1.Name == "You" {
+		level.AddEvent(c1.Name + " attack the " + c2.Name + ".")
+	} else {
+		level.AddEvent("The " + c1.Name + " attacks you.")
+	}
 }
 
 // ResolveDamage calculates damage dealt after an attack
@@ -241,11 +253,23 @@ func (level *Level) ResolveDamage() {
 	// Apply damage
 	c2.Hitpoints -= damage
 
-	level.AddEvent(c1.Name + " Damaged " + c2.Name + " for " + strconv.Itoa(damage))
+	if c1.Name == "You" {
+		level.AddEvent(c1.Name + " hit the " + c2.Name + " for " + strconv.Itoa(damage) + " damage.")
+	} else {
+		level.AddEvent("The " + c1.Name + " hit you for " + strconv.Itoa(damage) + " damage.")
+	}
+
 	if c2.Hitpoints <= 0 {
-		level.AddEvent(c1.Name + " Killed " + c2.Name)
+		if c1.Name == "You" {
+			level.AddEvent("The " + c2.Name + " collapses!")
+		} else {
+			level.AddEvent(c1.Name + " were slain by the " + c2.Name)
+		}
 		level.Kill(c2)
 	}
+
+	level.Battle.C1 = nil
+	level.Battle.C2 = nil
 }
 
 // Kill ...
@@ -648,8 +672,8 @@ func (game *Game) handleInput(input *Input) {
 	level := game.CurrentLevel
 	p := level.Player
 	if level.LastEvent == Attack {
-		burst := level.Player.Character.Burst
-		if len(burst) > 0 {
+		burst := level.Player.Burst
+		if len(burst.Notes) > 0 {
 			pos := -1
 			switch input.Typ {
 			case Left:
@@ -662,10 +686,11 @@ func (game *Game) handleInput(input *Input) {
 				pos = 3
 			}
 			// Hit correct note
-			if burst[0] == pos {
-				level.Player.Character.Burst = burst[1:]
+			if burst.Notes[0] == pos {
+				p.Burst.Combo++ // Maintains note colour
+				p.Burst.Notes = burst.Notes[1:]
 				// Passed burst
-				if len(burst) == 1 {
+				if len(burst.Notes) == 0 {
 					level.LastEvent = Damage
 					return
 				}

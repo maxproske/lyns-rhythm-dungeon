@@ -73,6 +73,29 @@ func (m *Monster) Update(level *Level) {
 	}
 }
 
+// Autoplay will automatically play the provided burst
+func (m *Monster) Autoplay(level *Level) {
+	// Pause before playing to simulate a real player
+	amt := time.Duration(400 + rand.Intn(100)) // 400-500ms
+	time.Sleep(time.Millisecond * amt)
+	if level.LastEvent == Attack {
+		for {
+			// Wait random interval
+			amt := time.Duration(100 + rand.Intn(600)) // 100-700ms
+			time.Sleep(time.Millisecond * amt)
+			// Play note
+			if len(m.Burst.Notes) > 0 {
+				m.Burst.Notes = m.Burst.Notes[1:]
+				if len(m.Burst.Notes) == 0 {
+					level.LastEvent = Damage
+					level.ResolveDamage()
+					return
+				}
+			}
+		}
+	}
+}
+
 // Pass prevents monsters from building up large sums of action points
 func (m *Monster) Pass() {
 	m.ActionPoints -= m.Speed
@@ -106,7 +129,10 @@ func (m *Monster) Move(to Pos, level *Level) {
 		// If there is another monster in the way, don't attack the player
 		if to == level.Player.Pos {
 			level.Attack(&m.Character, &level.Player.Character)
-			level.LastEvent = Attack
+			// Run blocking events in a seperate goroutine
+			go func() {
+				m.Autoplay(level)
+			}()
 		}
 	}
 }
