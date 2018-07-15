@@ -22,7 +22,7 @@ func NewRat(p Pos) *Monster {
 				Name: "Rat",
 				Rune: 'R',
 			},
-			Hitpoints:    200,
+			Hitpoints:    5,
 			Strength:     5,
 			Speed:        1.5,
 			ActionPoints: 0.0,
@@ -42,7 +42,7 @@ func NewSpider(p Pos) *Monster {
 				Name: "Spider",
 				Rune: 'S',
 			},
-			Hitpoints:    200,
+			Hitpoints:    100,
 			Strength:     0,
 			Speed:        1.0,
 			ActionPoints: 0.0,
@@ -95,7 +95,7 @@ func (m *Monster) Kill(level *Level) {
 
 // Move moves towards the player position
 func (m *Monster) Move(to Pos, level *Level) {
-	if level.LastEvent != Attack {
+	if level.LastEvent != Attack && level.LastEvent != Damage {
 		_, exists := level.Monsters[to] // Is there something at the position we want to move to?
 		if !exists && to != level.Player.Pos {
 			delete(level.Monsters, m.Pos) // Delete current, add new
@@ -107,13 +107,6 @@ func (m *Monster) Move(to Pos, level *Level) {
 		if to == level.Player.Pos {
 			level.Attack(&m.Character, &level.Player.Character)
 			level.LastEvent = Attack
-			if m.Hitpoints <= 0 {
-				// Kill monster and drop any items
-				m.Kill(level)
-			}
-			if level.Player.Hitpoints <= 0 {
-				panic("ded")
-			}
 		}
 	}
 }

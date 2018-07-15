@@ -7,16 +7,16 @@ import (
 
 // DrawBurst renders a short pattern of arrows on the battle UI
 // TODO(Max): Draw the attacker's burst first. (player -> character)
-func (ui *ui) DrawBurst(p *game.Player) {
+func (ui *ui) DrawBurst(c *game.Character) {
 
 	colors := [4]int{1, 4, 2, 4}
 
 	// For now, always draw the players's burst first
-	offsetX := int32(ui.winWidth/2 - int(float64(ui.winWidth)*0.1)) // Cast int to int32 since we will always use it as int32
-	offsetY := int32(ui.winHeight/2 - int(float64(ui.winHeight)*0.1))
+	offsetX := int32(ui.winWidth/2 - (game.NumKeys*20)/2) // Cast int to int32 since we will always use it as int32
+	offsetY := int32(ui.winHeight/2 - (game.NumKeys*24)/2)
 
 	// Play playfield
-	playfieldRect := sdl.Rect{offsetX, offsetY, game.NumKeys * 24, int32(len(p.Burst)+1) * 20}
+	playfieldRect := sdl.Rect{offsetX, offsetY, game.NumKeys * 24, int32(len(c.Burst)+1) * 20}
 	ui.renderer.Copy(ui.playfieldBackground, nil, &playfieldRect)
 
 	// Draw receptors
@@ -26,11 +26,12 @@ func (ui *ui) DrawBurst(p *game.Player) {
 		ui.renderer.Copy(ui.noteskinAtlas, &srcRect, &dstRect)
 	}
 
-	// fmt.Println("Burst:", p.Burst)
-
-	for noteIndex, columnIndex := range p.Burst {
+	for noteIndex, columnIndex := range c.Burst {
 		// Get note colour
-		noteskinIndex := colors[noteIndex%game.NumKeys]
+		noteskinIndex := 0
+		if c.Name == "You" {
+			noteskinIndex = colors[noteIndex%game.NumKeys]
+		}
 		noteskinRune := getRuneFromNoteskinIndex(noteskinIndex)
 		srcRect := ui.noteskinIndex[noteskinRune][0]
 		dstRect := sdl.Rect{int32(columnIndex*24) + offsetX, int32((noteIndex+1)*20) + offsetY, 24, 20}
@@ -41,6 +42,8 @@ func (ui *ui) DrawBurst(p *game.Player) {
 
 func getRuneFromNoteskinIndex(i int) rune {
 	switch i {
+	case 0:
+		return game.Receptor
 	case 1:
 		return game.Red
 	case 2:
@@ -58,7 +61,8 @@ func (ui *ui) DrawBattle(level *game.Level) {
 	ui.renderer.Copy(ui.battleBackground, nil, invRect)
 
 	// Draw the player's burst first
-	ui.DrawBurst(level.Player)
+	// fmt.Println(level.Battle)
+	ui.DrawBurst(level.Battle.C1)
 }
 
 func (ui *ui) getBattleRect() *sdl.Rect {

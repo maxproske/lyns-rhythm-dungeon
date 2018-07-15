@@ -162,10 +162,10 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	ui.groundInventoryBackground = ui.GetSinglePixelTex(&sdl.Color{149, 84, 19, 128})
 	ui.groundInventoryBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
 
-	ui.battleBackground = ui.GetSinglePixelTex(&sdl.Color{84, 149, 19, 128})
+	ui.battleBackground = ui.GetSinglePixelTex(&sdl.Color{84, 149, 19, 0})
 	ui.battleBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
 
-	ui.playfieldBackground = ui.GetSinglePixelTex(&sdl.Color{0, 0, 0, 200})
+	ui.playfieldBackground = ui.GetSinglePixelTex(&sdl.Color{0, 0, 0, 255})
 	ui.playfieldBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
 
 	ui.slotBackground = ui.GetSinglePixelTex(&sdl.Color{0, 0, 0, 255})
@@ -608,6 +608,11 @@ func (ui *ui) Run() {
 				case game.Attack:
 					if ui.state != UIBattle {
 						ui.state = UIBattle
+					}
+				case game.Damage:
+					newLevel.ResolveDamage()
+					if ui.state == UIBattle {
+						ui.state = UIMain
 					}
 				default:
 				}

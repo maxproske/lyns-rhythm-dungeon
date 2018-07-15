@@ -67,6 +67,12 @@ const (
 	Search
 )
 
+// Battle tracks the position of two characters
+type Battle struct {
+	C1 *Character
+	C2 *Character
+}
+
 // Input ...
 type Input struct {
 	Typ          InputType
@@ -151,6 +157,7 @@ const (
 	Portal
 	PickUp
 	Drop
+	Damage
 )
 
 // Level holds the 2D array that represents the map
@@ -164,6 +171,7 @@ type Level struct {
 	EventPos  int
 	Debug     map[Pos]bool // Map x/y positions to true/false
 	LastEvent GameEvent    // Events not visible to the player
+	Battle    *Battle
 }
 
 // DropItem ...
@@ -199,12 +207,23 @@ func (level *Level) MoveItem(itemToMove *Item, character *Character) {
 	panic("Tried to move an item we're not on top of")
 }
 
-// Attack engages two attackables
+// Attack engages two characters
 func (level *Level) Attack(c1, c2 *Character) {
-	// a1 attacking a2 first
-	// Attach new stream pattern to character
-	c1.Burst = c1.MakeStream(16)
+	level.Battle.C1 = c1
+	level.Battle.C2 = c2
+	level.LastEvent = Attack
+	// Attach new stream pattern to attacking character
+	streamLength := 4
+	c1.Burst = c1.MakeStream(streamLength)
+	level.AddEvent(c1.Name + " Attacked " + c2.Name)
 
+}
+
+// ResolveDamage calculates damage dealt after an attack
+func (level *Level) ResolveDamage() {
+	c1 := level.Battle.C1
+	c2 := level.Battle.C2
+	// a1 damaging a2 first
 	c1.ActionPoints--
 	c1AttackPower := c1.Strength
 
@@ -222,10 +241,26 @@ func (level *Level) Attack(c1, c2 *Character) {
 	// Apply damage
 	c2.Hitpoints -= damage
 
-	if c2.Hitpoints > 0 {
-		level.AddEvent(c1.Name + " Attacked " + c2.Name) //+ " for " + strconv.Itoa(damage))
-	} else {
+	level.AddEvent(c1.Name + " Damaged " + c2.Name + " for " + strconv.Itoa(damage))
+	if c2.Hitpoints <= 0 {
 		level.AddEvent(c1.Name + " Killed " + c2.Name)
+		level.Kill(c2)
+	}
+}
+
+// Kill ...
+func (level *Level) Kill(c *Character) {
+	if c.Name == "You" {
+		fmt.Println("You died.")
+	} else {
+		delete(level.Monsters, c.Pos)
+		groundItems := level.Items[c.Pos]
+		for _, item := range c.Items {
+			item.Pos = c.Pos
+			groundItems = append(groundItems, item)
+		}
+		// TODO(max): will overwrite items on that tile
+		level.Items[c.Pos] = groundItems
 	}
 }
 
@@ -356,8 +391,7 @@ func (game *Game) loadWorldFile() {
 
 		levelToTeleportTo := game.Levels[row[3]] // Level 2 name
 		if levelToTeleportTo == nil {
-			fmt.Println("Couldn't find level to name in world file.")
-			panic(nil)
+			panic("Couldn't find level to name in world file.")
 		}
 		x, err = strconv.ParseInt(row[4], 10, 64)
 		if err != nil {
@@ -422,6 +456,7 @@ func loadLevels() map[string]*Level {
 		level.Events = make([]string, 10)
 		level.Player = player
 		level.Map = make([][]Tile, len(levelLines))
+		level.Battle = &Battle{nil, nil}
 		level.Monsters = make(map[Pos]*Monster)
 		level.Items = make(map[Pos][]*Item)
 		level.Portals = make(map[Pos]*LevelPos)
@@ -560,7 +595,6 @@ func (game *Game) Move(to Pos) {
 		// Check position we are moving to for portals
 		levelAndPos := level.Portals[to]
 		if levelAndPos != nil {
-			fmt.Println("in portal!")
 			game.CurrentLevel = levelAndPos.Level
 			game.CurrentLevel.Player.Pos = levelAndPos.Pos
 			game.CurrentLevel.lineOfSight()
@@ -585,13 +619,6 @@ func (game *Game) resolveMovement(pos Pos) {
 		monster, exists := level.Monsters[pos]
 		if exists {
 			level.Attack(&level.Player.Character, &monster.Character) // Attacked
-			level.LastEvent = Attack
-			if monster.Hitpoints <= 0 {
-				monster.Kill(level)
-			}
-			if level.Player.Hitpoints <= 0 {
-				panic("ded")
-			}
 		} else if canWalk(level, pos) {
 			game.Move(pos)
 		} else {
@@ -620,44 +647,70 @@ func equip(c *Character, itemToEquip *Item) {
 func (game *Game) handleInput(input *Input) {
 	level := game.CurrentLevel
 	p := level.Player
-	// Check if the place the player is going to is available
-	switch input.Typ {
-	case Up:
-		newPos := Pos{p.X, p.Y - 1}
-		game.resolveMovement(newPos)
-	case Down:
-		newPos := Pos{p.X, p.Y + 1}
-		game.resolveMovement(newPos)
-	case Left:
-		newPos := Pos{p.X - 1, p.Y}
-		game.resolveMovement(newPos)
-	case Right:
-		newPos := Pos{p.X + 1, p.Y}
-		game.resolveMovement(newPos)
-	case TakeItem:
-		level.MoveItem(input.Item, &p.Character)
-		level.LastEvent = PickUp
-	case DropItem:
-		level.DropItem(input.Item, &level.Player.Character)
-		level.LastEvent = Drop // Update activity log
-	case TakeAll:
-		for _, item := range level.Items[p.Pos] {
-			level.MoveItem(item, &p.Character)
-		}
-		level.LastEvent = PickUp
-	case EquipItem:
-		equip(&level.Player.Character, input.Item)
-	case CloseWindow:
-		close(input.LevelChannel) // Close level input game from
-		chanIndex := 0
-		for i, c := range game.LevelChans {
-			if c == input.LevelChannel {
-				chanIndex = i
-				break
+	if level.LastEvent == Attack {
+		burst := level.Player.Character.Burst
+		if len(burst) > 0 {
+			pos := -1
+			switch input.Typ {
+			case Left:
+				pos = 0
+			case Down:
+				pos = 1
+			case Up:
+				pos = 2
+			case Right:
+				pos = 3
+			}
+			// Hit correct note
+			if burst[0] == pos {
+				level.Player.Character.Burst = burst[1:]
+				// Passed burst
+				if len(burst) == 1 {
+					level.LastEvent = Damage
+					return
+				}
 			}
 		}
-		// Remove an item from a slice
-		game.LevelChans = append(game.LevelChans[:chanIndex], game.LevelChans[chanIndex+1:]...)
+	} else {
+		// Check if the place the player is going to is available
+		switch input.Typ {
+		case Up:
+			newPos := Pos{p.X, p.Y - 1}
+			game.resolveMovement(newPos)
+		case Down:
+			newPos := Pos{p.X, p.Y + 1}
+			game.resolveMovement(newPos)
+		case Left:
+			newPos := Pos{p.X - 1, p.Y}
+			game.resolveMovement(newPos)
+		case Right:
+			newPos := Pos{p.X + 1, p.Y}
+			game.resolveMovement(newPos)
+		case TakeItem:
+			level.MoveItem(input.Item, &p.Character)
+			level.LastEvent = PickUp
+		case DropItem:
+			level.DropItem(input.Item, &level.Player.Character)
+			level.LastEvent = Drop // Update activity log
+		case TakeAll:
+			for _, item := range level.Items[p.Pos] {
+				level.MoveItem(item, &p.Character)
+			}
+			level.LastEvent = PickUp
+		case EquipItem:
+			equip(&level.Player.Character, input.Item)
+		case CloseWindow:
+			close(input.LevelChannel) // Close level input game from
+			chanIndex := 0
+			for i, c := range game.LevelChans {
+				if c == input.LevelChannel {
+					chanIndex = i
+					break
+				}
+			}
+			// Remove an item from a slice
+			game.LevelChans = append(game.LevelChans[:chanIndex], game.LevelChans[chanIndex+1:]...)
+		}
 	}
 }
 
@@ -782,13 +835,6 @@ func (game *Game) Run() {
 		if input.Typ == QuitGame {
 			return
 		}
-
-		//p := game.Level.Player.Pos
-		//level.bresenham(p, Pos{p.X + 5, p.Y - 5})
-		// for _, pos := range line {
-		// 	fmt.Println(pos)
-		// 	game.Level.Debug[pos] = true
-		// }
 
 		game.handleInput(input) // Pass along the input we got
 
