@@ -1,5 +1,10 @@
 package game
 
+import (
+	"math/rand"
+	"time"
+)
+
 // Monster is an enemy entity
 type Monster struct {
 	Character
@@ -23,6 +28,7 @@ func NewRat(p Pos) *Monster {
 			ActionPoints: 0.0,
 			SightRange:   10.0,
 			Items:        []*Item{NewSword(Pos{})},
+			PatternRNG:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		},
 	}
 }
@@ -41,6 +47,7 @@ func NewSpider(p Pos) *Monster {
 			Speed:        1.0,
 			ActionPoints: 0.0,
 			SightRange:   10.0,
+			PatternRNG:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		},
 	}
 }
@@ -88,22 +95,25 @@ func (m *Monster) Kill(level *Level) {
 
 // Move moves towards the player position
 func (m *Monster) Move(to Pos, level *Level) {
-	_, exists := level.Monsters[to] // Is there something at the position we want to move to?
-	if !exists && to != level.Player.Pos {
-		delete(level.Monsters, m.Pos) // Delete current, add new
-		level.Monsters[to] = m
-		m.Pos = to
-		return
-	}
-	// If there is another monster in the way, don't attack the player
-	if to == level.Player.Pos {
-		level.Attack(&m.Character, &level.Player.Character)
-		if m.Hitpoints <= 0 {
-			// Kill monster and drop any items
-			m.Kill(level)
+	if level.LastEvent != Attack {
+		_, exists := level.Monsters[to] // Is there something at the position we want to move to?
+		if !exists && to != level.Player.Pos {
+			delete(level.Monsters, m.Pos) // Delete current, add new
+			level.Monsters[to] = m
+			m.Pos = to
+			return
 		}
-		if level.Player.Hitpoints <= 0 {
-			panic("ded")
+		// If there is another monster in the way, don't attack the player
+		if to == level.Player.Pos {
+			level.Attack(&m.Character, &level.Player.Character)
+			level.LastEvent = Attack
+			if m.Hitpoints <= 0 {
+				// Kill monster and drop any items
+				m.Kill(level)
+			}
+			if level.Player.Hitpoints <= 0 {
+				panic("ded")
+			}
 		}
 	}
 }

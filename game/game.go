@@ -5,10 +5,12 @@ import (
 	"encoding/csv"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Game contains channels for game and UI threads
@@ -133,6 +135,8 @@ type Character struct {
 	Items        []*Item
 	Helmet       *Item
 	Weapon       *Item
+	PatternRNG   *rand.Rand // Each character has rand value seperate from ui
+	Burst        []int
 }
 
 // GameEvent provides visibility of events to UI2D
@@ -198,6 +202,9 @@ func (level *Level) MoveItem(itemToMove *Item, character *Character) {
 // Attack engages two attackables
 func (level *Level) Attack(c1, c2 *Character) {
 	// a1 attacking a2 first
+	// Attach new stream pattern to character
+	c1.Burst = c1.MakeStream(16)
+
 	c1.ActionPoints--
 	c1AttackPower := c1.Strength
 
@@ -216,7 +223,7 @@ func (level *Level) Attack(c1, c2 *Character) {
 	c2.Hitpoints -= damage
 
 	if c2.Hitpoints > 0 {
-		level.AddEvent(c1.Name + " Attacked " + c2.Name + " for " + strconv.Itoa(damage))
+		level.AddEvent(c1.Name + " Attacked " + c2.Name) //+ " for " + strconv.Itoa(damage))
 	} else {
 		level.AddEvent(c1.Name + " Killed " + c2.Name)
 	}
@@ -328,15 +335,13 @@ func (game *Game) loadWorldFile() {
 		if rowIndex == 0 {
 			game.CurrentLevel = game.Levels[row[0]] // Get the first item from the first row, and set the level
 			if game.CurrentLevel == nil {
-				fmt.Println("Couldn't find current level name in world file.")
-				panic(nil)
+				panic("Couldn't find current level name in world file.")
 			}
 			continue
 		}
 		levelWithPortal := game.Levels[row[0]] // Level 1 name
 		if levelWithPortal == nil {
-			fmt.Println("Couldn't find level from name in world file.")
-			panic(nil)
+			panic("Couldn't find level from name in world file.")
 		}
 
 		x, err := strconv.ParseInt(row[1], 10, 64)
@@ -374,11 +379,12 @@ func loadLevels() map[string]*Level {
 	player := &Player{} // Player used to not be a pointer
 	player.Strength = 5
 	player.Hitpoints = 100
-	player.Name = "GoMan"
+	player.Name = "You"
 	player.Rune = '@'
 	player.Speed = 1.0
 	player.ActionPoints = 0
 	player.SightRange = 7
+	player.PatternRNG = rand.New(rand.NewSource(time.Now().UnixNano()))
 	levels := make(map[string]*Level)
 	// Load level
 	filenames, err := filepath.Glob("game/maps/*.map")
@@ -547,46 +553,50 @@ func checkDoor(level *Level, pos Pos) {
 
 // Move moves the player unless a monster exists in that location
 func (game *Game) Move(to Pos) {
-	level := game.CurrentLevel
-	player := level.Player
+	if game.CurrentLevel.LastEvent != Attack {
+		level := game.CurrentLevel
+		player := level.Player
 
-	// Check position we are moving to for portals
-	levelAndPos := level.Portals[to]
-	if levelAndPos != nil {
-		fmt.Println("in portal!")
-		game.CurrentLevel = levelAndPos.Level
-		game.CurrentLevel.Player.Pos = levelAndPos.Pos
-		game.CurrentLevel.lineOfSight()
-	} else {
-		player.Pos = to // Player has moved
-		level.LastEvent = Move
-		// Draw line of sight
-		for y, row := range level.Map {
-			for x := range row {
-				level.Map[y][x].Visible = false
+		// Check position we are moving to for portals
+		levelAndPos := level.Portals[to]
+		if levelAndPos != nil {
+			fmt.Println("in portal!")
+			game.CurrentLevel = levelAndPos.Level
+			game.CurrentLevel.Player.Pos = levelAndPos.Pos
+			game.CurrentLevel.lineOfSight()
+		} else {
+			player.Pos = to // Player has moved
+			level.LastEvent = Move
+			// Draw line of sight
+			for y, row := range level.Map {
+				for x := range row {
+					level.Map[y][x].Visible = false
+				}
 			}
+			level.lineOfSight()
 		}
-		level.lineOfSight()
 	}
 }
 
 // Handle decisions about player movement
 func (game *Game) resolveMovement(pos Pos) {
-	level := game.CurrentLevel
-	monster, exists := level.Monsters[pos]
-	if exists {
-		level.Attack(&level.Player.Character, &monster.Character) // Attacked
-		level.LastEvent = Attack
-		if monster.Hitpoints <= 0 {
-			monster.Kill(level)
+	if game.CurrentLevel.LastEvent != Attack {
+		level := game.CurrentLevel
+		monster, exists := level.Monsters[pos]
+		if exists {
+			level.Attack(&level.Player.Character, &monster.Character) // Attacked
+			level.LastEvent = Attack
+			if monster.Hitpoints <= 0 {
+				monster.Kill(level)
+			}
+			if level.Player.Hitpoints <= 0 {
+				panic("ded")
+			}
+		} else if canWalk(level, pos) {
+			game.Move(pos)
+		} else {
+			checkDoor(level, pos)
 		}
-		if level.Player.Hitpoints <= 0 {
-			panic("ded")
-		}
-	} else if canWalk(level, pos) {
-		game.Move(pos)
-	} else {
-		checkDoor(level, pos)
 	}
 }
 

@@ -45,7 +45,6 @@ func (ui *ui) getInventoryItemRect(i int) *sdl.Rect {
 
 // DrawInventory ....
 func (ui *ui) DrawInventory(level *game.Level) {
-
 	// Enlarge player image
 	playerSrcRect := ui.textureIndex[level.Player.Rune][0]
 	invRect := ui.getInventoryRect()

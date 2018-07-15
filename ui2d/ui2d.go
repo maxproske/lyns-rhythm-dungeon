@@ -53,6 +53,7 @@ type uiState int
 const (
 	UIMain uiState = iota
 	UIInventory
+	UIBattle
 )
 
 type ui struct {
@@ -63,8 +64,10 @@ type ui struct {
 	winHeight         int
 	renderer          *sdl.Renderer
 	window            *sdl.Window
-	textureAtlas      *sdl.Texture        // Spritesheets called texture atlases
+	textureAtlas      *sdl.Texture // Spritesheets called texture atlases
+	noteskinAtlas     *sdl.Texture
 	textureIndex      map[rune][]sdl.Rect // Go map from a tile to rect
+	noteskinIndex     map[rune][]sdl.Rect
 	prevKeyboardState []uint8
 	keyboardState     []uint8
 	centerX           int // Keep camera centered around player
@@ -79,6 +82,8 @@ type ui struct {
 	eventBackground           *sdl.Texture
 	groundInventoryBackground *sdl.Texture
 	slotBackground            *sdl.Texture
+	battleBackground          *sdl.Texture
+	playfieldBackground       *sdl.Texture
 
 	str2TexSmall  map[string]*sdl.Texture // String/texture cache
 	str2TexMedium map[string]*sdl.Texture // TODO(max): map string for size to eliminate redundancy
@@ -97,7 +102,7 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	ui.str2TexLarge = make(map[string]*sdl.Texture)
 	ui.inputChan = inputChan
 	ui.levelChan = levelChan
-	ui.r = rand.New(rand.NewSource(1)) // Each UI has its own random starting with the same seed
+	ui.r = rand.New(rand.NewSource(3020)) // Each UI has its own random starting with the same seed
 	ui.winHeight = 720
 	ui.winWidth = 1280
 
@@ -117,9 +122,13 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	// Set hints.
 	//sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
 
-	// Create texture.
+	// Create spritesheet texture.
 	ui.textureAtlas = ui.imgFileToTexture("ui2d/assets/tiles.png")
 	ui.loadTextureIndex()
+
+	// Create noteskin texture.
+	ui.noteskinAtlas = ui.imgFileToTexture("ui2d/assets/noteskin.png")
+	ui.loadNoteskinIndex()
 
 	// Update keyboard state
 	ui.keyboardState = sdl.GetKeyboardState() // Updates by sdl
@@ -152,6 +161,12 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 
 	ui.groundInventoryBackground = ui.GetSinglePixelTex(&sdl.Color{149, 84, 19, 128})
 	ui.groundInventoryBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
+
+	ui.battleBackground = ui.GetSinglePixelTex(&sdl.Color{84, 149, 19, 128})
+	ui.battleBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
+
+	ui.playfieldBackground = ui.GetSinglePixelTex(&sdl.Color{0, 0, 0, 200})
+	ui.playfieldBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
 
 	ui.slotBackground = ui.GetSinglePixelTex(&sdl.Color{0, 0, 0, 255})
 	ui.slotBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
@@ -252,6 +267,37 @@ func (ui *ui) stringToTexture(s string, color sdl.Color, size FontSize) *sdl.Tex
 
 	//tex.Destroy() // Always destroy texture or it will stay in memory indefinitely
 	return tex
+}
+
+func (ui *ui) loadNoteskinIndex() {
+	ui.noteskinIndex = make(map[rune][]sdl.Rect) // 0, 4, 8, 16 ...
+	infile, err := os.Open("ui2d/assets/noteskin-index.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer infile.Close()
+
+	// Read from scanner
+	scanner := bufio.NewScanner(infile) // *File satisfies io.Reader interface
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line) // Remove extra spaces
+		tileRune := rune(line[0])      // Get first rune from the string
+		xy := line[1:]                 // Get ButFirst
+		splitXYC := strings.Split(xy, ",")
+		x, err := strconv.ParseInt(strings.TrimSpace(splitXYC[0]), 10, 64) // base10, bit size 64
+		if err != nil {
+			panic(err)
+		}
+		y, err := strconv.ParseInt(strings.TrimSpace(splitXYC[1]), 10, 64)
+		if err != nil {
+			panic(err)
+		}
+		var rects []sdl.Rect
+		rects = append(rects, sdl.Rect{int32(x * 24), int32(y * 20), 24, 20})
+		ui.noteskinIndex[tileRune] = rects
+		x++
+	}
 }
 
 func (ui *ui) loadTextureIndex() {
@@ -489,8 +535,6 @@ func (ui *ui) Draw(level *game.Level) {
 		// Right to left
 		ui.renderer.Copy(ui.textureAtlas, &itemSrcRect, ui.getGroundItemRect(i))
 	}
-
-	//ui.renderer.Present()
 }
 
 func (ui *ui) getGroundItemRect(i int) *sdl.Rect {
@@ -561,6 +605,10 @@ func (ui *ui) Run() {
 					playRandomSound(ui.sounds.footsteps, 5)
 				case game.OpenDoor:
 					playRandomSound(ui.sounds.openingDoors, 10)
+				case game.Attack:
+					if ui.state != UIBattle {
+						ui.state = UIBattle
+					}
 				default:
 				}
 			}
@@ -593,6 +641,9 @@ func (ui *ui) Run() {
 				ui.draggedItem = ui.CheckInventoryItems(newLevel)
 			}
 			ui.DrawInventory(newLevel)
+		} else if ui.state == UIBattle {
+			// Start battle
+			ui.DrawBattle(newLevel)
 		}
 		// TODO(max): calling present twice will cause flickering
 		ui.renderer.Present()
@@ -620,7 +671,7 @@ func (ui *ui) Run() {
 			} else if ui.keyDownOnce(sdl.SCANCODE_I) {
 				if ui.state == UIMain {
 					ui.state = UIInventory
-				} else {
+				} else if ui.state == UIInventory {
 					ui.state = UIMain
 				}
 			}
