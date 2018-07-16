@@ -512,13 +512,15 @@ func loadLevels() map[string]*Level {
 					t.Rune = Pending
 				case 's':
 					level.Items[pos] = append(level.Items[pos], NewSword(pos)) // Append item to slice of items, follow monster template
-					level.Items[pos] = append(level.Items[pos], NewHelmet(pos))
 					t.Rune = Pending
 				case 'h':
 					level.Items[pos] = append(level.Items[pos], NewHelmet(pos))
 					t.Rune = Pending
 				case '.':
 					t.Rune = DirtFloor
+				case '$':
+					level.Items[pos] = append(level.Items[pos], NewCredits(pos))
+					t.Rune = Pending
 				case '@':
 					level.Player.X = x // Set player X,Y
 					level.Player.Y = y

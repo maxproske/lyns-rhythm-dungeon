@@ -36,7 +36,7 @@ func NewRat(p Pos) *Monster {
 			Speed:        1.5,
 			ActionPoints: 0.0,
 			SightRange:   10.0,
-			Items:        []*Item{NewSword(Pos{})},
+			Items:        []*Item{NewCredits(Pos{})},
 			PatternRNG:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		},
 	}
@@ -85,7 +85,7 @@ func (m *Monster) Update(level *Level) {
 // Autoplay will automatically play the provided burst
 func (m *Monster) Autoplay(level *Level) {
 	// Pause before playing to simulate a real player
-	amt := time.Duration(400 + rand.Intn(100)) // 400-500ms
+	amt := time.Duration(50) // 400-500ms
 	time.Sleep(time.Millisecond * amt)
 	if level.LastEvent == Attack {
 		for {

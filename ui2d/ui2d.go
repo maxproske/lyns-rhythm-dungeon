@@ -90,8 +90,10 @@ type ui struct {
 	eventBackground           *sdl.Texture
 	groundInventoryBackground *sdl.Texture
 	slotBackground            *sdl.Texture
-	battleBackground          *sdl.Texture
+	battleBorderPlayer        *sdl.Texture
+	battleBorderMonster       *sdl.Texture
 	playfieldBackground       *sdl.Texture
+	dimOverlay                *sdl.Texture
 
 	str2TexSmall  map[string]*sdl.Texture // String/texture cache
 	str2TexMedium map[string]*sdl.Texture // TODO(max): map string for size to eliminate redundancy
@@ -111,8 +113,8 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	ui.inputChan = inputChan
 	ui.levelChan = levelChan
 	ui.r = rand.New(rand.NewSource(3020)) // Each UI has its own random starting with the same seed
-	ui.winHeight = 720
-	ui.winWidth = 1280
+	ui.winHeight = 480
+	ui.winWidth = 780
 
 	// Create a window.
 	window, err := sdl.CreateWindow("RPG", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, int32(ui.winWidth), int32(ui.winHeight), sdl.WINDOW_SHOWN)
@@ -150,7 +152,7 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	ui.centerY = -1
 
 	// Get the font sizes
-	ui.fontSmall, err = ttf.OpenFont("ui2d/assets/gothic.ttf", int(float64(ui.winWidth)*0.015))
+	ui.fontSmall, err = ttf.OpenFont("ui2d/assets/gothic.ttf", int(float64(ui.winWidth)*0.02))
 	if err != nil {
 		panic(err)
 	}
@@ -170,8 +172,14 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	ui.groundInventoryBackground = ui.GetSinglePixelTex(&sdl.Color{149, 84, 19, 128})
 	ui.groundInventoryBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
 
-	ui.battleBackground = ui.GetSinglePixelTex(&sdl.Color{84, 149, 19, 0})
-	ui.battleBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
+	ui.dimOverlay = ui.GetSinglePixelTex(&sdl.Color{0, 0, 0, 200})
+	ui.dimOverlay.SetBlendMode(sdl.BLENDMODE_BLEND)
+
+	ui.battleBorderPlayer = ui.GetSinglePixelTex(&sdl.Color{255, 255, 255, 255})
+	ui.battleBorderPlayer.SetBlendMode(sdl.BLENDMODE_BLEND)
+
+	ui.battleBorderMonster = ui.GetSinglePixelTex(&sdl.Color{255, 0, 0, 255})
+	ui.battleBorderMonster.SetBlendMode(sdl.BLENDMODE_BLEND)
 
 	ui.playfieldBackground = ui.GetSinglePixelTex(&sdl.Color{0, 0, 0, 255})
 	ui.playfieldBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
@@ -435,7 +443,7 @@ func (ui *ui) Draw(level *game.Level) {
 		ui.centerX = level.Player.X
 		ui.centerY = level.Player.Y
 	}
-	limit := 5
+	limit := 3
 	if level.Player.X > ui.centerX+limit {
 		diff := level.Player.X - (ui.centerX + limit) // Put player back within the limit
 		ui.centerX += diff
@@ -473,12 +481,13 @@ func (ui *ui) Draw(level *game.Level) {
 					if level.Debug[pos] {
 						ui.textureAtlas.SetColorMod(128, 0, 0) // Multiply color we set on top of it
 					} else if tile.Seen && !tile.Visible {
-						ui.textureAtlas.SetColorMod(64, 64, 64) // Halfway faded out
+						colorMod := uint8(32)
+						ui.textureAtlas.SetColorMod(colorMod, colorMod, colorMod) // Halfway faded out
 					} else {
 						xDelta := level.Player.Pos.X - x
 						yDelta := level.Player.Pos.Y - y
 						d := int(math.Sqrt(float64(xDelta*xDelta + yDelta*yDelta)))
-						colorMod := 255 - uint8(d*30)
+						colorMod := 255 - uint8(d*35)
 						if colorMod < 0 {
 							colorMod = 0
 						}
@@ -523,7 +532,7 @@ func (ui *ui) Draw(level *game.Level) {
 
 	// Draw event console background
 	// nil for the source stretches one pixel to our dst
-	textStart := int32(float64(ui.winHeight) * 0.68)
+	textStart := int32(float64(ui.winHeight) * 0.6)
 	textWidth := int32(float64(ui.winWidth) * 0.25)
 	ui.renderer.Copy(ui.eventBackground, nil, &sdl.Rect{0, textStart, textWidth, int32(ui.winHeight) - textStart})
 
@@ -594,6 +603,7 @@ func (ui *ui) GetSinglePixelTex(color *sdl.Color) *sdl.Texture {
 // GetInput polls for events, and quits when event is nil
 func (ui *ui) Run() {
 	var newLevel *game.Level
+	var lastCombo int
 	ui.prevMouseState = getmouseState()
 
 	// Keep waiting for user input
@@ -630,8 +640,9 @@ func (ui *ui) Run() {
 					playRandomSound(ui.sounds.openingDoors, 10)
 				case game.Attack:
 					if ui.state == UIBattle {
-						if newLevel.Battle.C1 == &newLevel.Player.Character {
+						if newLevel.Battle.C1 == &newLevel.Player.Character && newLevel.Battle.C1.Burst.Combo != lastCombo {
 							playHitsound(ui.sounds.hitsound)
+							lastCombo = newLevel.Battle.C1.Burst.Combo
 						}
 					} else {
 						ui.state = UIBattle

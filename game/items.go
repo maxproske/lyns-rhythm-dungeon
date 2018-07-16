@@ -17,6 +17,19 @@ type Item struct {
 	power float64
 }
 
+// NewCredits is an instance of currency
+func NewCredits(p Pos) *Item {
+	return &Item{
+		Typ: Other,
+		Entity: Entity{
+			Pos:  p,
+			Name: "Credits",
+			Rune: '$',
+		},
+		power: 2.0,
+	}
+}
+
 // NewSword is an instance of a sword
 func NewSword(p Pos) *Item {
 	return &Item{
