@@ -31,8 +31,9 @@ func NewRat(p Pos) *Monster {
 				Name: "Rat",
 				Rune: 'R',
 			},
-			Hitpoints:    5,
-			Strength:     5,
+			Hitpoints:    4,
+			MaxStamina:   4,
+			Stamina:      4,
 			Speed:        1.5,
 			ActionPoints: 0.0,
 			SightRange:   10.0,
@@ -52,7 +53,8 @@ func NewSpider(p Pos) *Monster {
 				Rune: 'S',
 			},
 			Hitpoints:    100,
-			Strength:     0,
+			MaxStamina:   4,
+			Stamina:      4,
 			Speed:        1.0,
 			ActionPoints: 0.0,
 			SightRange:   10.0,
@@ -94,9 +96,17 @@ func (m *Monster) Autoplay(level *Level) {
 			time.Sleep(time.Millisecond * amt)
 			// Play note
 			if len(m.Burst.Notes) > 0 {
+				m.Stamina--
 				m.Typ = KeyPress
 				m.Burst.Notes = m.Burst.Notes[1:]
 				if len(m.Burst.Notes) == 0 {
+					m.Stamina = m.MaxStamina
+					level.LastEvent = Damage
+					level.ResolveDamage()
+					return
+				}
+				if m.Stamina <= 0 {
+					m.Stamina = m.MaxStamina
 					level.LastEvent = Damage
 					level.ResolveDamage()
 					return

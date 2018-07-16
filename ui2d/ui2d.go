@@ -117,7 +117,7 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	ui.winWidth = 780
 
 	// Create a window.
-	window, err := sdl.CreateWindow("RPG", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, int32(ui.winWidth), int32(ui.winHeight), sdl.WINDOW_SHOWN)
+	window, err := sdl.CreateWindow("Lyn's Rhythm Dungeon", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, int32(ui.winWidth), int32(ui.winHeight), sdl.WINDOW_SHOWN)
 	if err != nil {
 		panic(err)
 	}
@@ -193,11 +193,11 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	}
 
 	// Load music
-	mus, err := mix.LoadMUS("ui2d/assets/ambient.ogg")
-	if err != nil {
-		panic(err)
-	}
-	mus.Play(-1) // Loop forever
+	// mus, err := mix.LoadMUS("ui2d/assets/ambient.ogg")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// mus.Play(-1) // Loop forever
 
 	// Load hitsound
 	ui.sounds.hitsound, err = mix.LoadWAV("ui2d/assets/hitsound.ogg")
@@ -716,7 +716,7 @@ func (ui *ui) Run() {
 		// Handle keypresses if window is in focus
 		// Or else will crash because we are trying to send x3 input to all 3 windows at the same time
 		if sdl.GetKeyboardFocus() == ui.window && sdl.GetMouseFocus() == ui.window {
-
+			//fmt.Println(newLevel.Player.Pos)
 			if ui.keyDownOnce(sdl.SCANCODE_UP) {
 				input.Typ = game.Up
 			} else if ui.keyDownOnce(sdl.SCANCODE_DOWN) {

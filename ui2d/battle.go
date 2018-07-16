@@ -7,7 +7,7 @@ import (
 
 // DrawBurst renders a short pattern of arrows on the battle UI
 // TODO(Max): Draw the attacker's burst first. (player -> character)
-func (ui *ui) DrawBurst(c *game.Character) {
+func (ui *ui) DrawBurst(c, defender *game.Character) {
 
 	// Dim the lights
 	ui.renderer.Copy(ui.dimOverlay, nil, nil) // Stretch to fit
@@ -29,8 +29,22 @@ func (ui *ui) DrawBurst(c *game.Character) {
 		ui.renderer.Copy(ui.battleBorderMonster, nil, &battleBackgroundRect)
 
 	}
-
 	ui.renderer.Copy(ui.playfieldBackground, nil, &playfieldRect)
+
+	// Draw versus context
+	yOffset := int32(50)
+	xCenter := int32(20)
+	// Draw attacker
+	c1SrcRect := ui.textureIndex[c.Rune][0]
+	ui.renderer.Copy(ui.textureAtlas, &c1SrcRect, &sdl.Rect{playfieldRect.X + xCenter, playfieldRect.Y - yOffset, 32, 32})
+	// Draw attcker weapon
+	if c.Weapon != nil {
+		weaponSrcRect := ui.textureIndex[c.Weapon.Rune][0]
+		ui.renderer.Copy(ui.textureAtlas, &weaponSrcRect, &sdl.Rect{playfieldRect.X + playfieldRect.W/2 - 32/2, playfieldRect.Y - yOffset, 32, 32})
+	}
+	// Draw defender
+	c2SrcRect := ui.textureIndex[defender.Rune][0]
+	ui.renderer.Copy(ui.textureAtlas, &c2SrcRect, &sdl.Rect{playfieldRect.X + playfieldRect.W - 32 - xCenter, playfieldRect.Y - yOffset, 32, 32})
 
 	// Draw receptors
 	srcRect := ui.noteskinIndex[game.Receptor][0]
@@ -73,5 +87,5 @@ func getRuneFromNoteskinIndex(i int) rune {
 // DrawBattle renders the battle screen
 func (ui *ui) DrawBattle(level *game.Level) {
 	// Draw the attacker's burst first
-	ui.DrawBurst(level.Battle.C1)
+	ui.DrawBurst(level.Battle.C1, level.Battle.C2)
 }

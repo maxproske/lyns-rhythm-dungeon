@@ -37,6 +37,12 @@ func NewGame(numWindows int) *Game {
 	return game
 }
 
+// Battle tracks the position of two characters
+type Battle struct {
+	C1 *Character
+	C2 *Character
+}
+
 // InputType is a tagged union/discriminating union/sum type
 type InputType int
 
@@ -66,12 +72,6 @@ const (
 	// Search input type
 	Search
 )
-
-// Battle tracks the position of two characters
-type Battle struct {
-	C1 *Character
-	C2 *Character
-}
 
 // Input ...
 type Input struct {
@@ -135,9 +135,10 @@ type Player struct {
 type Character struct {
 	Entity
 	Hitpoints    int
-	Strength     int
+	MaxStamina   int
+	Stamina      int // How many notes a character can hit per battle
 	Speed        float64
-	ActionPoints float64
+	ActionPoints float64 // How many tiles a character can move per turn
 	SightRange   int
 	Items        []*Item
 	Helmet       *Item
@@ -221,12 +222,14 @@ func (level *Level) Attack(c1, c2 *Character) {
 	level.Battle.C2 = c2
 	level.LastEvent = Attack
 	// Attach new stream pattern to attacking character
-	streamLength := 4
-	c1.Burst = &Burst{c1.MakeStream(streamLength), streamLength, 0}
+	if c1.Burst == nil || c1.Burst != nil && len(c1.Burst.Notes) == 0 {
+		streamLength := c2.Hitpoints
+		c1.Burst = &Burst{c1.MakeStream(streamLength), streamLength, 0}
+	}
 	if c1.Name == "You" {
-		level.AddEvent(c1.Name + " attack the " + c2.Name + ".")
+		//level.AddEvent(c1.Name + " attack the " + c2.Name + ".")
 	} else {
-		level.AddEvent("The " + c1.Name + " attacks you.")
+		//level.AddEvent("The " + c1.Name + " attacks you.")
 	}
 }
 
@@ -236,20 +239,23 @@ func (level *Level) ResolveDamage() {
 	c2 := level.Battle.C2
 	// a1 damaging a2 first
 	c1.ActionPoints--
-	c1AttackPower := c1.Strength
+	c1AttackPower := c1.Stamina
 
-	// Apply weapon bonus
-	if c1.Weapon != nil {
-		c1AttackPower = int(float64(c1AttackPower) * c1.Weapon.power)
-	}
+	// // (temporarily disabled)
+	// // Apply weapon bonus
+	// if c1.Weapon != nil {
+	// 	c1AttackPower = int(float64(c1AttackPower) * c1.Weapon.power)
+	// }
+	// damage := c1AttackPower
+
+	// // Apply armor bonus
+	// if c2.Helmet != nil {
+	// 	damage = int(float64(damage) * (1.0 - c2.Helmet.power))
+	// }
+
+	// // Apply damage
+	// c2.Hitpoints -= damage
 	damage := c1AttackPower
-
-	// Apply armor bonus
-	if c2.Helmet != nil {
-		damage = int(float64(damage) * (1.0 - c2.Helmet.power))
-	}
-
-	// Apply damage
 	c2.Hitpoints -= damage
 
 	if c1.Name == "You" {
@@ -434,13 +440,15 @@ func (game *Game) loadWorldFile() {
 func loadLevels() map[string]*Level {
 	// Make player
 	player := &Player{} // Player used to not be a pointer
-	player.Strength = 5
+	player.MaxStamina = 2
+	player.Stamina = player.MaxStamina
 	player.Hitpoints = 100
 	player.Name = "You"
 	player.Rune = '@'
 	player.Speed = 1.0
 	player.ActionPoints = 0
 	player.SightRange = 7
+	player.Weapon = NewSword(Pos{})
 	player.PatternRNG = rand.New(rand.NewSource(time.Now().UnixNano()))
 	levels := make(map[string]*Level)
 	// Load level
@@ -688,11 +696,18 @@ func (game *Game) handleInput(input *Input) {
 			}
 			// Hit correct note
 			if burst.Notes[0] == pos {
+				p.Stamina--
 				p.Burst.Combo++ // Maintains note colour
 				p.Burst.Notes = burst.Notes[1:]
 				// Passed burst
 				if len(burst.Notes) == 0 {
+					p.Stamina = p.MaxStamina // Restore stamina
 					level.LastEvent = Damage // More thump sound on damage?
+					return
+				}
+				if p.Stamina <= 0 {
+					p.Stamina = p.MaxStamina // Restore stamina
+					level.LastEvent = Damage
 					return
 				}
 			}
