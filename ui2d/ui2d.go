@@ -3,6 +3,7 @@ package ui2d
 import (
 	"bufio"
 	"image/png"
+	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -40,12 +41,19 @@ func getmouseState() *mouseState {
 type sounds struct {
 	openingDoors []*mix.Chunk // Arrays to play randomly
 	footsteps    []*mix.Chunk
+	hitsound     *mix.Chunk
 }
 
 func playRandomSound(chunks []*mix.Chunk, volume int) {
 	chunkIndex := rand.Intn(len(chunks))
 	chunks[chunkIndex].Volume(volume)
 	chunks[chunkIndex].Play(-1, 0)
+}
+
+func playHitsound(chunk *mix.Chunk) {
+	go func() {
+		chunk.Play(-1, 0)
+	}()
 }
 
 type uiState int
@@ -171,16 +179,24 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	ui.slotBackground = ui.GetSinglePixelTex(&sdl.Color{0, 0, 0, 255})
 	ui.slotBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
 
-	// Start playing music
-	err = mix.OpenAudio(22050, mix.DEFAULT_FORMAT, 2, 4096)
+	err = mix.OpenAudio(mix.DEFAULT_FREQUENCY, mix.DEFAULT_FORMAT, 4, 512) // Chunk size of 4096 will take long to load
 	if err != nil {
 		panic(err)
 	}
+
+	// Load music
 	mus, err := mix.LoadMUS("ui2d/assets/ambient.ogg")
 	if err != nil {
 		panic(err)
 	}
 	mus.Play(-1) // Loop forever
+
+	// Load hitsound
+	ui.sounds.hitsound, err = mix.LoadWAV("ui2d/assets/hitsound.ogg")
+	if err != nil {
+		panic(err)
+	}
+	ui.sounds.hitsound.Volume(40)
 
 	// Load footstep sounds
 	footstepBase := "ui2d/assets/footstep0"
@@ -457,9 +473,16 @@ func (ui *ui) Draw(level *game.Level) {
 					if level.Debug[pos] {
 						ui.textureAtlas.SetColorMod(128, 0, 0) // Multiply color we set on top of it
 					} else if tile.Seen && !tile.Visible {
-						ui.textureAtlas.SetColorMod(128, 128, 128) // Halfway faded out
+						ui.textureAtlas.SetColorMod(64, 64, 64) // Halfway faded out
 					} else {
-						ui.textureAtlas.SetColorMod(255, 255, 255) // No longer any changes to the texture
+						xDelta := level.Player.Pos.X - x
+						yDelta := level.Player.Pos.Y - y
+						d := int(math.Sqrt(float64(xDelta*xDelta + yDelta*yDelta)))
+						colorMod := 255 - uint8(d*30)
+						if colorMod < 0 {
+							colorMod = 0
+						}
+						ui.textureAtlas.SetColorMod(colorMod, colorMod, colorMod) // No longer any changes to the texture
 					}
 
 					ui.renderer.Copy(ui.textureAtlas, &srcRect, &dstRect)
@@ -606,11 +629,16 @@ func (ui *ui) Run() {
 				case game.OpenDoor:
 					playRandomSound(ui.sounds.openingDoors, 10)
 				case game.Attack:
-					if ui.state != UIBattle {
+					if ui.state == UIBattle {
+						if newLevel.Battle.C1 == &newLevel.Player.Character {
+							playHitsound(ui.sounds.hitsound)
+						}
+					} else {
 						ui.state = UIBattle
 					}
 				case game.Damage:
 					if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
+						playHitsound(ui.sounds.hitsound)
 						newLevel.ResolveDamage()
 						if ui.state == UIBattle {
 							ui.state = UIMain
@@ -664,6 +692,14 @@ func (ui *ui) Run() {
 		if item != nil {
 			input.Typ = game.TakeItem
 			input.Item = item
+		}
+
+		// Detect if a monster pressed a key
+		for _, m := range newLevel.Monsters {
+			if m.Typ == game.KeyPress {
+				playHitsound(ui.sounds.hitsound)
+				m.Typ = game.NoInput
+			}
 		}
 
 		// Handle keypresses if window is in focus

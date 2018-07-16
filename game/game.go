@@ -65,8 +65,6 @@ const (
 	EquipItem
 	// Search input type
 	Search
-	// MonsterAttacked is not a player input type
-	MonsterAttacked
 )
 
 // Battle tracks the position of two characters
@@ -79,6 +77,7 @@ type Battle struct {
 type Input struct {
 	Typ          InputType
 	Item         *Item // Item will be the data, not the position of a click
+	Monster      *Monster
 	LevelChannel chan *Level
 }
 
@@ -256,7 +255,7 @@ func (level *Level) ResolveDamage() {
 	if c1.Name == "You" {
 		level.AddEvent(c1.Name + " hit the " + c2.Name + " for " + strconv.Itoa(damage) + " damage.")
 	} else {
-		level.AddEvent("The " + c1.Name + " hit you for " + strconv.Itoa(damage) + " damage.")
+		level.AddEvent("The " + c1.Name + " hits you for " + strconv.Itoa(damage) + " damage.")
 	}
 
 	if c2.Hitpoints <= 0 {
@@ -671,7 +670,7 @@ func equip(c *Character, itemToEquip *Item) {
 func (game *Game) handleInput(input *Input) {
 	level := game.CurrentLevel
 	p := level.Player
-	if level.LastEvent == Attack {
+	if level.LastEvent == Attack && level.Battle.C1 == &p.Character {
 		burst := level.Player.Burst
 		if len(burst.Notes) > 0 {
 			pos := -1
@@ -691,7 +690,7 @@ func (game *Game) handleInput(input *Input) {
 				p.Burst.Notes = burst.Notes[1:]
 				// Passed burst
 				if len(burst.Notes) == 0 {
-					level.LastEvent = Damage
+					level.LastEvent = Damage // More thump sound on damage?
 					return
 				}
 			}

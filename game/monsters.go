@@ -5,9 +5,18 @@ import (
 	"time"
 )
 
+// MonsterInputType exposes monster input to UI2D
+type MonsterInputType int
+
+const (
+	NoInput MonsterInputType = iota
+	KeyPress
+)
+
 // Monster is an enemy entity
 type Monster struct {
 	Character
+	Typ MonsterInputType
 }
 
 // NewRat spawns a slow monster
@@ -85,6 +94,7 @@ func (m *Monster) Autoplay(level *Level) {
 			time.Sleep(time.Millisecond * amt)
 			// Play note
 			if len(m.Burst.Notes) > 0 {
+				m.Typ = KeyPress
 				m.Burst.Notes = m.Burst.Notes[1:]
 				if len(m.Burst.Notes) == 0 {
 					level.LastEvent = Damage
