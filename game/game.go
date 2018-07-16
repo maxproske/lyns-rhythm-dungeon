@@ -3,7 +3,6 @@ package game
 import (
 	"bufio"
 	"encoding/csv"
-	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -158,8 +157,9 @@ type Burst struct {
 type GameEvent int
 
 const (
-	// Move ...
-	Move GameEvent = iota
+	// NoEvent
+	NoEvent GameEvent = iota
+	Move
 	DoorOpen
 	Attack
 	Hit
@@ -227,9 +227,9 @@ func (level *Level) Attack(c1, c2 *Character) {
 		c1.Burst = &Burst{c1.MakeStream(streamLength), streamLength, 0}
 	}
 	if c1.Name == "You" {
-		//level.AddEvent(c1.Name + " attack the " + c2.Name + ".")
+		level.AddEvent(c1.Name + " attack the " + c2.Name + ".")
 	} else {
-		//level.AddEvent("The " + c1.Name + " attacks you.")
+		level.AddEvent("The " + c1.Name + " attacks you.")
 	}
 }
 
@@ -268,11 +268,10 @@ func (level *Level) ResolveDamage() {
 		if c1.Name == "You" {
 			level.AddEvent("The " + c2.Name + " collapses!")
 		} else {
-			level.AddEvent(c1.Name + " were slain by the " + c2.Name)
+			level.AddEvent(c2.Name + " were slain by the " + c1.Name + "!")
 		}
 		level.Kill(c2)
 	}
-
 	level.Battle.C1 = nil
 	level.Battle.C2 = nil
 }
@@ -280,7 +279,10 @@ func (level *Level) ResolveDamage() {
 // Kill ...
 func (level *Level) Kill(c *Character) {
 	if c.Name == "You" {
-		fmt.Println("You died.")
+		level.Player.Speed = 0
+		groundItems := level.Items[c.Pos]
+		level.Items[c.Pos] = groundItems
+		level.Player.Rune = 't'
 	} else {
 		delete(level.Monsters, c.Pos)
 		groundItems := level.Items[c.Pos]
@@ -442,7 +444,7 @@ func loadLevels() map[string]*Level {
 	player := &Player{} // Player used to not be a pointer
 	player.MaxStamina = 2
 	player.Stamina = player.MaxStamina
-	player.Hitpoints = 100
+	player.Hitpoints = 20
 	player.Name = "You"
 	player.Rune = '@'
 	player.Speed = 1.0
@@ -647,15 +649,17 @@ func (game *Game) Move(to Pos) {
 
 // Handle decisions about player movement
 func (game *Game) resolveMovement(pos Pos) {
-	if game.CurrentLevel.LastEvent != Attack {
-		level := game.CurrentLevel
-		monster, exists := level.Monsters[pos]
-		if exists {
-			level.Attack(&level.Player.Character, &monster.Character) // Attacked
-		} else if canWalk(level, pos) {
-			game.Move(pos)
-		} else {
-			checkDoor(level, pos)
+	level := game.CurrentLevel
+	if level.Player.Speed > 0 {
+		if level.LastEvent != Attack {
+			monster, exists := level.Monsters[pos]
+			if exists {
+				level.Attack(&level.Player.Character, &monster.Character) // Attacked
+			} else if canWalk(level, pos) {
+				game.Move(pos)
+			} else {
+				checkDoor(level, pos)
+			}
 		}
 	}
 }

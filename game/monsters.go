@@ -52,12 +52,13 @@ func NewSpider(p Pos) *Monster {
 				Name: "Spider",
 				Rune: 'S',
 			},
-			Hitpoints:    100,
-			MaxStamina:   4,
-			Stamina:      4,
-			Speed:        1.0,
+			Hitpoints:    12,
+			MaxStamina:   8,
+			Stamina:      8,
+			Speed:        2.0,
 			ActionPoints: 0.0,
 			SightRange:   10.0,
+			Items:        []*Item{NewCredits(Pos{})},
 			PatternRNG:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		},
 	}
@@ -119,21 +120,6 @@ func (m *Monster) Autoplay(level *Level) {
 // Pass prevents monsters from building up large sums of action points
 func (m *Monster) Pass() {
 	m.ActionPoints -= m.Speed
-}
-
-// Kill drops monster's items onto its current position
-func (m *Monster) Kill(level *Level) {
-	// Remove a monster from the map when it is dead.
-	// It is safe to delete from a map while iterative over it. (cool!)
-	delete(level.Monsters, m.Pos)
-
-	groundItems := level.Items[m.Pos]
-	for _, item := range m.Items {
-		item.Pos = m.Pos
-		groundItems = append(groundItems, item)
-	}
-	// TODO(max): will overwrite items on that tile
-	level.Items[m.Pos] = groundItems
 }
 
 // Move moves towards the player position

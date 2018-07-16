@@ -193,11 +193,11 @@ func NewUI(inputChan chan *game.Input, levelChan chan *game.Level) *ui {
 	}
 
 	// Load music
-	// mus, err := mix.LoadMUS("ui2d/assets/ambient.ogg")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// mus.Play(-1) // Loop forever
+	mus, err := mix.LoadMUS("ui2d/assets/dungeon-theme.ogg")
+	if err != nil {
+		panic(err)
+	}
+	mus.Play(-1) // Loop forever
 
 	// Load hitsound
 	ui.sounds.hitsound, err = mix.LoadWAV("ui2d/assets/hitsound.ogg")
@@ -640,20 +640,22 @@ func (ui *ui) Run() {
 					playRandomSound(ui.sounds.openingDoors, 10)
 				case game.Attack:
 					if ui.state == UIBattle {
-						if newLevel.Battle.C1 == &newLevel.Player.Character && newLevel.Battle.C1.Burst.Combo != lastCombo {
+						if newLevel.Battle.C1 == &newLevel.Player.Character && newLevel.Battle.C1.Burst.Combo > lastCombo {
 							playHitsound(ui.sounds.hitsound)
-							lastCombo = newLevel.Battle.C1.Burst.Combo
 						}
+						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from callping
 					} else {
 						ui.state = UIBattle
 					}
 				case game.Damage:
 					if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
-						playHitsound(ui.sounds.hitsound)
+						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from callping
 						newLevel.ResolveDamage()
+						playHitsound(ui.sounds.hitsound)
 						if ui.state == UIBattle {
 							ui.state = UIMain
 						}
+
 					}
 				default:
 				}
@@ -716,7 +718,6 @@ func (ui *ui) Run() {
 		// Handle keypresses if window is in focus
 		// Or else will crash because we are trying to send x3 input to all 3 windows at the same time
 		if sdl.GetKeyboardFocus() == ui.window && sdl.GetMouseFocus() == ui.window {
-			//fmt.Println(newLevel.Player.Pos)
 			if ui.keyDownOnce(sdl.SCANCODE_UP) {
 				input.Typ = game.Up
 			} else if ui.keyDownOnce(sdl.SCANCODE_DOWN) {
