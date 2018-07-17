@@ -239,7 +239,7 @@ func (level *Level) ResolveDamage() {
 	c2 := level.Battle.C2
 	// a1 damaging a2 first
 	c1.ActionPoints--
-	c1AttackPower := c1.Stamina
+	c1AttackPower := 1 // c1.MaxStamina - c1.Stamina
 
 	// // (temporarily disabled)
 	// // Apply weapon bonus
@@ -272,8 +272,6 @@ func (level *Level) ResolveDamage() {
 		}
 		level.Kill(c2)
 	}
-	level.Battle.C1 = nil
-	level.Battle.C2 = nil
 }
 
 // Kill ...

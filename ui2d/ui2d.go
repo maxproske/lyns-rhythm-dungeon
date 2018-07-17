@@ -2,6 +2,7 @@ package ui2d
 
 import (
 	"bufio"
+	"fmt"
 	"image/png"
 	"math"
 	"math/rand"
@@ -639,8 +640,11 @@ func (ui *ui) Run() {
 				case game.OpenDoor:
 					playRandomSound(ui.sounds.openingDoors, 10)
 				case game.Attack:
+					fmt.Println("Attack")
 					if ui.state == UIBattle {
 						if newLevel.Battle.C1 == &newLevel.Player.Character && newLevel.Battle.C1.Burst.Combo > lastCombo {
+							fmt.Println(newLevel.Battle.C1.Stamina, newLevel.Battle.C1.Burst.Combo)
+							newLevel.ResolveDamage()
 							playHitsound(ui.sounds.hitsound)
 						}
 						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from callping
@@ -648,11 +652,12 @@ func (ui *ui) Run() {
 						ui.state = UIBattle
 					}
 				case game.Damage:
+					fmt.Println("Damage")
 					if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
 						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from callping
 						newLevel.ResolveDamage()
 						playHitsound(ui.sounds.hitsound)
-						if ui.state == UIBattle {
+						if ui.state == UIBattle && newLevel.Battle.C1.Stamina <= 0 {
 							ui.state = UIMain
 						}
 
@@ -710,6 +715,7 @@ func (ui *ui) Run() {
 		// Detect if a monster pressed a key
 		for _, m := range newLevel.Monsters {
 			if m.Typ == game.KeyPress {
+				newLevel.ResolveDamage()
 				playHitsound(ui.sounds.hitsound)
 				m.Typ = game.NoInput
 			}
