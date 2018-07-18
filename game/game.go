@@ -684,7 +684,7 @@ func (game *Game) handleInput(input *Input) {
 	p := level.Player
 	if level.LastEvent == Attack && level.Battle.C1 == &p.Character {
 		burst := level.Player.Burst
-		if len(burst.Notes) > 0 {
+		if len(burst.Notes) > 0 && p.Stamina > 0 {
 			pos := -1
 			switch input.Typ {
 			case Left:
@@ -703,13 +703,13 @@ func (game *Game) handleInput(input *Input) {
 				p.Burst.Notes = burst.Notes[1:]
 				// Passed burst
 				if len(burst.Notes) == 0 {
-					p.Stamina = p.MaxStamina // Restore stamina
-					level.LastEvent = Damage // More thump sound on damage?
+					//p.Stamina = p.MaxStamina // Restore stamina
+					// level.LastEvent = Damage // More thump sound on damage?
 					return
 				}
 				if p.Stamina <= 0 {
-					p.Stamina = p.MaxStamina // Restore stamina
-					level.LastEvent = Damage
+					//p.Stamina = p.MaxStamina // Restore stamina
+					// level.LastEvent = Damage
 					return
 				}
 			}

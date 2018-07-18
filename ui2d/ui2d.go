@@ -643,20 +643,27 @@ func (ui *ui) Run() {
 					fmt.Println("Attack")
 					if ui.state == UIBattle {
 						if newLevel.Battle.C1 == &newLevel.Player.Character && newLevel.Battle.C1.Burst.Combo > lastCombo {
-							fmt.Println(newLevel.Battle.C1.Stamina, newLevel.Battle.C1.Burst.Combo)
+							// Player
 							newLevel.ResolveDamage()
 							playHitsound(ui.sounds.hitsound)
+							// Decide what to do when player stamina has reached 0
+							if newLevel.Battle.C1.Stamina <= 0 {
+								newLevel.Battle.C1.Stamina = newLevel.Battle.C1.MaxStamina
+								ui.state = UIMain
+								newLevel.LastEvent = game.Move
+							}
 						}
 						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from callping
 					} else {
 						ui.state = UIBattle
 					}
 				case game.Damage:
-					fmt.Println("Damage")
+					fmt.Println("You should not be here. State is game.Damage")
 					if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
 						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from callping
 						newLevel.ResolveDamage()
 						playHitsound(ui.sounds.hitsound)
+
 						if ui.state == UIBattle && newLevel.Battle.C1.Stamina <= 0 {
 							ui.state = UIMain
 						}
@@ -717,7 +724,14 @@ func (ui *ui) Run() {
 			if m.Typ == game.KeyPress {
 				newLevel.ResolveDamage()
 				playHitsound(ui.sounds.hitsound)
+				fmt.Println(m.Typ, ui.state == UIBattle, newLevel.Battle.C1.Stamina)
 				m.Typ = game.NoInput
+				if newLevel.Battle.C1.Stamina <= 0 {
+					newLevel.Battle.C1.Stamina = newLevel.Battle.C1.MaxStamina
+					ui.state = UIMain
+					// TODO(max): 2nd rat doesn't die
+					newLevel.LastEvent = game.NoEvent
+				}
 			}
 		}
 

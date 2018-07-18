@@ -101,15 +101,15 @@ func (m *Monster) Autoplay(level *Level) {
 				m.Typ = KeyPress
 				m.Burst.Notes = m.Burst.Notes[1:]
 				if len(m.Burst.Notes) == 0 {
-					m.Stamina = m.MaxStamina
-					level.LastEvent = Damage
-					level.ResolveDamage()
+					//m.Stamina = m.MaxStamina
+					//level.LastEvent = Damage
+					//level.ResolveDamage()
 					return
 				}
 				if m.Stamina <= 0 {
-					m.Stamina = m.MaxStamina
-					level.LastEvent = Damage
-					level.ResolveDamage()
+					//m.Stamina = m.MaxStamina
+					//level.LastEvent = Damage
+					//level.ResolveDamage()
 					return
 				}
 			}
