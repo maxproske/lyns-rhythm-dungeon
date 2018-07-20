@@ -3,6 +3,7 @@ package game
 import (
 	"bufio"
 	"encoding/csv"
+	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -458,8 +459,14 @@ func loadLevels() map[string]*Level {
 	}
 	for _, filename := range filenames {
 		extIndex := strings.LastIndex(filename, ".map")
-		lastSlashIndex := strings.LastIndex(filename, "\\")
+		lastSlashIndexWindows := strings.LastIndex(filename, "\\") // Windows
+		lastSlashIndexLinux := strings.LastIndex(filename, "/")    // Linux
+		lastSlashIndex := lastSlashIndexWindows
+		if lastSlashIndexLinux > lastSlashIndexWindows {
+			lastSlashIndex = lastSlashIndexLinux
+		}
 		levelName := filename[lastSlashIndex+1 : extIndex]
+		fmt.Println(levelName)
 		// Open file
 		file, err := os.Open(filename)
 		if err != nil {

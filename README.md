@@ -16,7 +16,13 @@ What things you need to install the software and how to install them.
 - Install Go and Visual Studio Code.
 - Install the Go extension in VSCode. It will generate everything you need.
 
-## Installing SDL2
+## Install SDL2 on Ubuntu 18.04+
+- `sudo apt install libsdl2{,-image,-mixer,-ttf,-gfx}-dev`
+- `go get -v github.com/veandco/go-sdl2/{sdl,img,mix,ttf}`
+- `go get -v github.com/maxproske/lyns-rhythm-dungeon`
+- `ln -s ~/go/src/github.com/maxproske/lyns-rhythm-dungeon ~/lynsrd`
+
+## Install SDL on Windows 10
 
 This guide is based on https://github.com/veandco/go-sdl2.
 
