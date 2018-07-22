@@ -30,6 +30,32 @@ func NewCredits(p Pos) *Item {
 	}
 }
 
+// NewPotion is an instance of currency
+func NewPotion(p Pos) *Item {
+	return &Item{
+		Typ: Other,
+		Entity: Entity{
+			Pos:  p,
+			Name: "Health Potion",
+			Rune: '+',
+		},
+		power: 16.0,
+	}
+}
+
+// NewBones is an instance of currency
+func NewBones(p Pos) *Item {
+	return &Item{
+		Typ: Other,
+		Entity: Entity{
+			Pos:  p,
+			Name: "Rat Bones",
+			Rune: 'b',
+		},
+		power: 1.0,
+	}
+}
+
 // NewSword is an instance of a sword
 func NewSword(p Pos) *Item {
 	return &Item{

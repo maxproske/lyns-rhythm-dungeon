@@ -640,9 +640,9 @@ func (ui *ui) Run() {
 				case game.OpenDoor:
 					playRandomSound(ui.sounds.openingDoors, 10)
 				case game.Attack:
-					fmt.Println("Attack")
 					if ui.state == UIBattle {
-						if newLevel.Battle.C1 == &newLevel.Player.Character && newLevel.Battle.C1.Burst.Combo > lastCombo {
+						//fmt.Println(newLevel.Battle.C1 == &newLevel.Player.Character, newLevel.Battle.C1.Burst.Combo > lastCombo, newLevel.Battle.C1.Burst.Combo, lastCombo)
+						if newLevel.Battle.C1 == &newLevel.Player.Character && newLevel.Battle.C1.Burst.Combo != lastCombo {
 							// Player
 							newLevel.ResolveDamage()
 							playHitsound(ui.sounds.hitsound)
@@ -653,22 +653,21 @@ func (ui *ui) Run() {
 								newLevel.LastEvent = game.Move
 							}
 						}
-						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from callping
+						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from counting
 					} else {
 						ui.state = UIBattle
 					}
 				case game.Damage:
 					fmt.Println("You should not be here. State is game.Damage")
-					if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
-						lastCombo = newLevel.Battle.C1.Burst.Combo // Prevent ghost notes from callping
-						newLevel.ResolveDamage()
-						playHitsound(ui.sounds.hitsound)
+					// if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
+					// 	newLevel.ResolveDamage()
+					// 	playHitsound(ui.sounds.hitsound)
 
-						if ui.state == UIBattle && newLevel.Battle.C1.Stamina <= 0 {
-							ui.state = UIMain
-						}
+					// 	if ui.state == UIBattle && newLevel.Battle.C1.Stamina <= 0 {
+					// 		ui.state = UIMain
+					// 	}
 
-					}
+					// }
 				default:
 				}
 			}
@@ -754,6 +753,8 @@ func (ui *ui) Run() {
 				} else if ui.state == UIInventory {
 					ui.state = UIMain
 				}
+			} else if ui.keyDownOnce(sdl.SCANCODE_P) {
+				fmt.Println(newLevel.Player.Pos)
 			}
 
 			// Update previous keyboard state

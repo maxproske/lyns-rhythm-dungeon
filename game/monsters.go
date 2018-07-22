@@ -37,7 +37,7 @@ func NewRat(p Pos) *Monster {
 			Speed:        1.5,
 			ActionPoints: 0.0,
 			SightRange:   10.0,
-			Items:        []*Item{NewCredits(Pos{})},
+			Items:        []*Item{NewBones(Pos{}), NewCredits(Pos{})},
 			PatternRNG:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		},
 	}
@@ -58,7 +58,7 @@ func NewSpider(p Pos) *Monster {
 			Speed:        2.0,
 			ActionPoints: 0.0,
 			SightRange:   10.0,
-			Items:        []*Item{NewCredits(Pos{})},
+			Items:        []*Item{NewCredits(Pos{}), NewPotion(Pos{})},
 			PatternRNG:   rand.New(rand.NewSource(time.Now().UnixNano())),
 		},
 	}

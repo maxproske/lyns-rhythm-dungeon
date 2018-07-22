@@ -3,7 +3,6 @@ package game
 import (
 	"bufio"
 	"encoding/csv"
-	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -102,6 +101,10 @@ const (
 	UpStair = 'u'
 	// DownStair represented by a character
 	DownStair = 'd'
+	// ClosedTrap represented by a character
+	ClosedTrap = 't'
+	// OpenTrap represented by a character
+	OpenTrap = 'T'
 	// Blank represented by zero
 	Blank = 0
 	// Pending represented by -1
@@ -281,7 +284,7 @@ func (level *Level) Kill(c *Character) {
 		level.Player.Speed = 0
 		groundItems := level.Items[c.Pos]
 		level.Items[c.Pos] = groundItems
-		level.Player.Rune = 't'
+		level.Player.Rune = 'x'
 	} else {
 		delete(level.Monsters, c.Pos)
 		groundItems := level.Items[c.Pos]
@@ -466,7 +469,6 @@ func loadLevels() map[string]*Level {
 			lastSlashIndex = lastSlashIndexLinux
 		}
 		levelName := filename[lastSlashIndex+1 : extIndex]
-		fmt.Println(levelName)
 		// Open file
 		file, err := os.Open(filename)
 		if err != nil {
@@ -548,6 +550,15 @@ func loadLevels() map[string]*Level {
 					// Spider
 					level.Monsters[pos] = NewSpider(pos)
 					t.Rune = Pending
+				case '+':
+					level.Items[pos] = append(level.Items[pos], NewPotion(pos))
+					t.Rune = Pending
+				case 't':
+					t.OverlayRune = ClosedTrap
+					t.Rune = Pending
+				case 'b':
+					level.Items[pos] = append(level.Items[pos], NewBones(pos))
+					t.Rune = Pending
 				default:
 					panic("Invalid character in map!")
 				}
@@ -585,6 +596,9 @@ func canWalk(level *Level, pos Pos) bool {
 		}
 		switch t.OverlayRune {
 		case ClosedDoor:
+			return false
+
+		case ClosedTrap:
 			return false
 		}
 		// Check to see if a monster is in the way
@@ -626,6 +640,16 @@ func checkDoor(level *Level, pos Pos) {
 	}
 }
 
+func checkTrap(level *Level, pos Pos) {
+	// Check tile for a trap
+	t := level.Map[pos.Y][pos.X]
+	if t.OverlayRune == ClosedTrap {
+		level.Map[pos.Y][pos.X].OverlayRune = OpenTrap // Player has stepped on a trap
+		level.LastEvent = OpenTrap
+		level.Kill(&level.Player.Character)
+	}
+}
+
 // Move moves the player unless a monster exists in that location
 func (game *Game) Move(to Pos) {
 	if game.CurrentLevel.LastEvent != Attack {
@@ -664,6 +688,7 @@ func (game *Game) resolveMovement(pos Pos) {
 				game.Move(pos)
 			} else {
 				checkDoor(level, pos)
+				checkTrap(level, pos)
 			}
 		}
 	}
@@ -710,6 +735,7 @@ func (game *Game) handleInput(input *Input) {
 				p.Burst.Notes = burst.Notes[1:]
 				// Passed burst
 				if len(burst.Notes) == 0 {
+					p.Burst.Combo = 0
 					//p.Stamina = p.MaxStamina // Restore stamina
 					// level.LastEvent = Damage // More thump sound on damage?
 					return
@@ -743,8 +769,13 @@ func (game *Game) handleInput(input *Input) {
 			level.DropItem(input.Item, &level.Player.Character)
 			level.LastEvent = Drop // Update activity log
 		case TakeAll:
+			var lastItem *Item
 			for _, item := range level.Items[p.Pos] {
+				if lastItem == item {
+					continue // TODO(max): allow multiple pickups of the same item
+				}
 				level.MoveItem(item, &p.Character)
+				lastItem = item
 			}
 			level.LastEvent = PickUp
 		case EquipItem:
