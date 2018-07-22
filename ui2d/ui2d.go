@@ -2,7 +2,6 @@ package ui2d
 
 import (
 	"bufio"
-	"fmt"
 	"image/png"
 	"math"
 	"math/rand"
@@ -641,7 +640,6 @@ func (ui *ui) Run() {
 					playRandomSound(ui.sounds.openingDoors, 10)
 				case game.Attack:
 					if ui.state == UIBattle {
-						//fmt.Println(newLevel.Battle.C1 == &newLevel.Player.Character, newLevel.Battle.C1.Burst.Combo > lastCombo, newLevel.Battle.C1.Burst.Combo, lastCombo)
 						if newLevel.Battle.C1 == &newLevel.Player.Character && newLevel.Battle.C1.Burst.Combo != lastCombo {
 							// Player
 							newLevel.ResolveDamage()
@@ -658,7 +656,7 @@ func (ui *ui) Run() {
 						ui.state = UIBattle
 					}
 				case game.Damage:
-					fmt.Println("You should not be here. State is game.Damage")
+					//fmt.Println("You should not be here. State is game.Damage")
 					// if newLevel.Battle.C1 != nil && newLevel.Battle.C2 != nil {
 					// 	newLevel.ResolveDamage()
 					// 	playHitsound(ui.sounds.hitsound)
@@ -723,7 +721,7 @@ func (ui *ui) Run() {
 			if m.Typ == game.KeyPress {
 				newLevel.ResolveDamage()
 				playHitsound(ui.sounds.hitsound)
-				fmt.Println(m.Typ, ui.state == UIBattle, newLevel.Battle.C1.Stamina)
+				//fmt.Println(m.Typ, ui.state == UIBattle, newLevel.Battle.C1.Stamina)
 				m.Typ = game.NoInput
 				if newLevel.Battle.C1.Stamina <= 0 {
 					newLevel.Battle.C1.Stamina = newLevel.Battle.C1.MaxStamina
@@ -754,7 +752,7 @@ func (ui *ui) Run() {
 					ui.state = UIMain
 				}
 			} else if ui.keyDownOnce(sdl.SCANCODE_P) {
-				fmt.Println(newLevel.Player.Pos)
+				//fmt.Println(newLevel.Player.Pos)
 			}
 
 			// Update previous keyboard state
