@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	"github.com/maxproske/lyns-rhythm-dungeon/game"
 	"github.com/veandco/go-sdl2/mix"
@@ -407,7 +408,8 @@ func (ui *ui) imgFileToTexture(filename string) *sdl.Texture {
 	if err != nil {
 		panic(err)
 	}
-	tex.Update(nil, pixels, w*4) // Can't provide a rectangle, pitch = 4 bytes per pixel
+	// tex.Update(nil, pixels, w*4)
+	tex.Update(nil, unsafe.Pointer(&pixels[0]), w*4) // Can't provide a rectangle, pitch = 4 bytes per pixel
 
 	// Set blend mode to alpha blending
 	err = tex.SetBlendMode(sdl.BLENDMODE_BLEND)
@@ -596,7 +598,8 @@ func (ui *ui) GetSinglePixelTex(color *sdl.Color) *sdl.Texture {
 	pixels[1] = color.G
 	pixels[2] = color.B
 	pixels[3] = color.A
-	tex.Update(nil, pixels, 4) // Can't provide a rectangle, pitch = 4 bytes per pixel
+	// tex.Update(nil, pixels, 4)
+	tex.Update(nil, unsafe.Pointer(&pixels[0]), 4) // Can't provide a rectangle, pitch = 4 bytes per pixel
 	return tex
 }
 
