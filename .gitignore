@@ -1,1 +1,4 @@
 *.exe
+lynsrd
+coverage.out
+coverage.html

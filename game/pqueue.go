@@ -31,6 +31,11 @@ func (pq pqueue) push(pos Pos, priority int) pqueue {
 
 // Remove something from the queue
 func (pq pqueue) pop() (pqueue, Pos) {
+	// Edge case if length of pq is 0
+	if len(pq) == 0 {
+		return pq, Pos{}
+	}
+
 	result := pq[0].Pos // Always return the root
 	// Replace root with rightmost leaf node
 	pq[0] = pq[len(pq)-1]

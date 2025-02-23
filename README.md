@@ -1,6 +1,6 @@
 # Lyn's Rhythm Dungeon
 
-What's in a name?
+[![codecov](https://codecov.io/gh/maxproske/lyns-rythm-dungeon/branch/master/graph/badge.svg)](https://codecov.io/gh/maxproske/lyns-rythm-dungeon)
 
 ## Why Go?
 
@@ -9,17 +9,10 @@ What's in a name?
 - Garbage collection is very low latency, compared to Java or C# which focus on throughput.
 - First-class support for concurrency, memory allocation, and unit testing.
 
-## Getting Started (MacOS)
+## Getting Started (macOS)
 
 ```sh
-# Install Go
-brew install go
-
-# Install SDL2
-brew install sdl2{,_image,_mixer,_ttf,_gfx} pkg-config
-go get -v github.com/veandco/go-sdl2/{sdl,img,mix,ttf}
-
-# Build
-go build -o lynsrd
-./lynsrd
+make deps
+make build
+make run
 ```
