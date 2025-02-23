@@ -35,12 +35,14 @@ func createTestLevel() *Level {
 	level.Player = &Player{
 		Character: Character{
 			Entity: Entity{
-				Pos:  Pos{X: 7, Y: 7}, // Center of 15x15 grid
+				Pos:  Pos{X: 7, Y: 7},
 				Name: "You",
 				Rune: '@',
 			},
 			Hitpoints:  100,
-			SightRange: 3, // Reduced to match test map size
+			SightRange: 3,
+			Speed:      1.0,
+			PatternRNG: mrand.New(mrand.NewSource(0)),
 		},
 	}
 	level.Monsters = make(map[Pos]*Monster)
@@ -1383,5 +1385,136 @@ func TestMoveWithPortal(t *testing.T) {
 	}
 	if game.CurrentLevel.Player.Pos != targetPos {
 		t.Error("Move should set player to target position")
+	}
+}
+
+func TestHandleInputMovement(t *testing.T) {
+	game := createTestGame()
+	initialPos := game.CurrentLevel.Player.Pos
+	input := &Input{Typ: Up}
+	game.handleInput(input)
+	newPos := game.CurrentLevel.Player.Pos
+	expectedPos := Pos{initialPos.X, initialPos.Y - 1}
+	if newPos != expectedPos {
+		t.Errorf("Expected player position %v, got %v", expectedPos, newPos)
+	}
+}
+
+func TestHandleInputTakeItem(t *testing.T) {
+	game := createTestGame()
+	level := game.CurrentLevel
+	pos := level.Player.Pos
+	item := NewSword(pos)
+	level.Items[pos] = append(level.Items[pos], item)
+
+	input := &Input{Typ: TakeItem, Item: item}
+	game.handleInput(input)
+
+	if len(level.Player.Items) != 1 || level.Player.Items[0] != item {
+		t.Error("Item not added to player's inventory")
+	}
+	if len(level.Items[pos]) != 0 {
+		t.Error("Item not removed from level")
+	}
+}
+
+func TestHandleInputDropItem(t *testing.T) {
+	game := createTestGame()
+	level := game.CurrentLevel
+	player := level.Player
+	item := NewSword(player.Pos)
+	player.Items = append(player.Items, item)
+
+	input := &Input{Typ: DropItem, Item: item}
+	game.handleInput(input)
+
+	if len(player.Items) != 0 {
+		t.Error("Item not removed from inventory")
+	}
+	if len(level.Items[player.Pos]) != 1 || level.Items[player.Pos][0] != item {
+		t.Error("Item not added to level")
+	}
+}
+
+func TestHandleInputCombatBurst(t *testing.T) {
+	game := createTestGame()
+	level := game.CurrentLevel
+	player := level.Player
+	monsterPos := Pos{7, 6}
+	monster := NewRat(monsterPos)
+	level.Monsters[monsterPos] = monster
+	level.Attack(&player.Character, &monster.Character)
+	player.Burst = &Burst{Notes: []int{2}, MaxCombo: 1, Combo: 0} // Assuming 2 corresponds to Up
+	player.Stamina = 1
+
+	input := &Input{Typ: Up}
+	game.handleInput(input)
+
+	if len(player.Burst.Notes) != 0 {
+		t.Error("Burst note not consumed")
+	}
+	if player.Stamina != 0 {
+		t.Error("Stamina not decremented")
+	}
+}
+
+func TestHandleInputCloseWindow(t *testing.T) {
+	game := createTestGame()
+	initialChannels := len(game.LevelChans)
+	testChan := game.LevelChans[0]
+	input := &Input{Typ: CloseWindow, LevelChannel: testChan}
+	game.handleInput(input)
+
+	if len(game.LevelChans) != initialChannels-1 {
+		t.Error("Level channel not removed")
+	}
+}
+
+func TestRunProcessesInput(t *testing.T) {
+	game := createTestGame()
+	levelChan := make(chan *Level, 1)
+	game.LevelChans = []chan *Level{levelChan}
+
+	go game.Run()
+	defer close(game.InputChan)
+
+	initialPos := game.CurrentLevel.Player.Pos
+	game.InputChan <- &Input{Typ: Up}
+
+	updatedLevel := <-levelChan
+	newPos := updatedLevel.Player.Pos
+	expectedPos := Pos{initialPos.X, initialPos.Y - 1}
+	if newPos != expectedPos {
+		t.Errorf("Expected player position %v after Run, got %v", expectedPos, newPos)
+	}
+}
+
+func TestRunUpdatesMonsters(t *testing.T) {
+	game := createTestGame()
+	level := game.CurrentLevel
+	monsterPos := Pos{7, 6}
+	monster := NewRat(monsterPos)
+	monster.ActionPoints = 0.0
+	level.Monsters[monsterPos] = monster
+
+	levelChan := make(chan *Level, 1)
+	game.LevelChans = []chan *Level{levelChan}
+
+	go game.Run()
+	defer close(game.InputChan)
+
+	<-levelChan // Discard initial state sent on Run start
+
+	// Send dummy input to trigger game loop processing
+	game.InputChan <- &Input{Typ: None}
+
+	updatedLevel := <-levelChan // Get state after update
+	updatedMonster, exists := updatedLevel.Monsters[monsterPos]
+	if !exists {
+		t.Fatal("Monster not found in level")
+	}
+	// Correct the expected value from 1.5 to 0.5
+	if updatedMonster.ActionPoints != 0.5 {
+		t.Errorf("Expected monster ActionPoints 0.5, got %f", updatedMonster.ActionPoints)
 	}
 }

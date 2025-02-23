@@ -502,3 +502,129 @@ func TestInventoryUIEdgeCases(t *testing.T) {
 		t.Error("Should handle dropping item in full inventory")
 	}
 }
+
+func TestCheckEquippedItem(t *testing.T) {
+	ui := &ui{
+		winWidth:  800,
+		winHeight: 600,
+		draggedItem: &game.Item{
+			Typ: game.Weapon,
+		},
+	}
+
+	// Position mouse over weapon slot
+	weaponRect := ui.getWeaponSlotRect()
+	ui.currentMouseState = &mouseState{
+		pos: game.Pos{X: int(weaponRect.X) + 5, Y: int(weaponRect.Y) + 5},
+	}
+
+	// Test weapon equip
+	result := ui.CheckEquippedItem()
+	if result != ui.draggedItem {
+		t.Error("Should return weapon when dragged over weapon slot")
+	}
+
+	// Test wrong item type
+	ui.draggedItem.Typ = game.Helmet
+	result = ui.CheckEquippedItem()
+	if result != nil {
+		t.Error("Should not equip helmet in weapon slot")
+	}
+
+	// Test helmet equip
+	ui.draggedItem.Typ = game.Helmet
+	helmetRect := ui.getHelmetSlotRect()
+	ui.currentMouseState.pos = game.Pos{X: int(helmetRect.X) + 5, Y: int(helmetRect.Y) + 5}
+	result = ui.CheckEquippedItem()
+	if result != ui.draggedItem {
+		t.Error("Should return helmet when dragged over helmet slot")
+	}
+}
+
+func TestCheckInventoryItems(t *testing.T) {
+	item := &game.Item{}
+	level := &game.Level{
+		Player: &game.Player{
+			Character: game.Character{
+				Items: []*game.Item{item},
+			},
+		},
+	}
+
+	ui := &ui{
+		winWidth:  800,
+		winHeight: 600,
+		currentMouseState: &mouseState{
+			leftButton: true,
+		},
+	}
+
+	// Position mouse over first inventory slot
+	itemRect := ui.getInventoryItemRect(0)
+	ui.currentMouseState.pos = game.Pos{X: int(itemRect.X) + 5, Y: int(itemRect.Y) + 5}
+
+	// Test item pickup
+	result := ui.CheckInventoryItems(level)
+	if result != item {
+		t.Error("Should detect inventory item when clicked")
+	}
+
+	// Test no item found
+	ui.currentMouseState.pos = game.Pos{X: 0, Y: 0}
+	result = ui.CheckInventoryItems(level)
+	if result != nil {
+		t.Error("Should return nil when clicking empty area")
+	}
+}
+
+func TestGetSliceFromInt(t *testing.T) {
+	ui := &ui{}
+	tests := []struct {
+		input    int
+		expected []int
+	}{
+		{0, []int{0}},
+		{5, []int{5}},
+		{45, []int{5, 4}},
+		{123, []int{3, 2, 1}},
+		{6789, []int{9, 8, 7, 6}},
+	}
+
+	for _, tc := range tests {
+		actual := ui.getSliceFromInt(tc.input)
+		if !slicesEqual(actual, tc.expected) {
+			t.Errorf("For %d expected %v, got %v", tc.input, tc.expected, actual)
+		}
+	}
+}
+
+func slicesEqual(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestGetRuneFromNoteskinIndex(t *testing.T) {
+	tests := []struct {
+		input    int
+		expected rune
+	}{
+		{0, game.Receptor},
+		{1, game.Red},
+		{2, game.Blue},
+		{4, game.Yellow},
+	}
+
+	for _, tc := range tests {
+		actual := getRuneFromNoteskinIndex(tc.input)
+		if actual != tc.expected {
+			t.Errorf("For %d expected %c, got %c", tc.input, tc.expected, actual)
+		}
+	}
+}
