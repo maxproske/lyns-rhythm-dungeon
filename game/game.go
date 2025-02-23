@@ -281,6 +281,7 @@ func (level *Level) ResolveDamage() {
 // Kill ...
 func (level *Level) Kill(c *Character) {
 	if c.Name == "You" {
+		level.Player.Hitpoints = 0
 		level.Player.Speed = 0
 		groundItems := level.Items[c.Pos]
 		level.Items[c.Pos] = groundItems
@@ -325,6 +326,11 @@ func (level *Level) lineOfSight() {
 
 // Draw a circle around the player and draw a line to each endpoint
 func (level *Level) bresenham(start Pos, end Pos) {
+	// Boundary checks
+	if !inRange(level, start) || !inRange(level, end) {
+		return
+	}
+
 	steep := math.Abs(float64(end.Y-start.Y)) > math.Abs(float64(end.X-start.X)) // Is the line steep or not?
 	// Swap the x and y for start and end
 	if steep {

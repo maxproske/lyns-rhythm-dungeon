@@ -21,8 +21,9 @@ type Monster struct {
 
 // NewRat spawns a slow monster
 // Why a map? Can iterate over maps fast, and access values by key
-//   level.monsters[pos]
-//   for key, value := range level.Monster { }
+//
+//	level.monsters[pos]
+//	for key, value := range level.Monster { }
 func NewRat(p Pos) *Monster {
 	return &Monster{
 		Character: Character{
