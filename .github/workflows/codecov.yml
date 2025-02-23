@@ -17,6 +17,11 @@ jobs:
         with:
           go-version: '1.24'
 
+      - name: Install SDL2 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2{,-mixer,-image,-ttf}-dev
+
       - name: Install dependencies
         run: go mod download
 
