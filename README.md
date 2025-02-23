@@ -1,6 +1,6 @@
 # Lyn's Rhythm Dungeon
 
-[![codecov](https://codecov.io/gh/maxproske/lyns-rythm-dungeon/branch/master/graph/badge.svg)](https://codecov.io/gh/maxproske/lyns-rythm-dungeon)
+[![codecov](https://codecov.io/gh/maxproske/lyns-rhythm-dungeon/graph/badge.svg?token=8AJTM68GWC)](https://codecov.io/gh/maxproske/lyns-rhythm-dungeon)
 
 ## Why Go?
 
